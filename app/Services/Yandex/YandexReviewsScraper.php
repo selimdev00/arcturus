@@ -69,7 +69,7 @@ class YandexReviewsScraper
             ->userAgent(self::UA)
             ->setExtraHttpHeaders(['Accept-Language' => 'ru-RU,ru;q=0.9'])
             ->windowSize(1280, 2200)
-            ->waitUntilNetworkIdle()
+            ->noSandbox()
             ->timeout(180)
             ->setOption('args', array_values(array_filter([
                 '--no-sandbox',
@@ -92,6 +92,11 @@ class YandexReviewsScraper
           const sleep = (ms) => new Promise(r => setTimeout(r, ms));
           const out = { name: null, ratingData: null, reviews: [], captcha: false };
           const byId = new Map();
+
+          // wait for the reviews list to render (up to ~12s)
+          for (let i = 0; i < 24 && !document.querySelector('.business-review-view'); i++) {
+            await sleep(500);
+          }
 
           if (/showcaptcha|checkcaptcha|smartcaptcha/i.test(document.documentElement.innerHTML)
               && !document.querySelector('.business-review-view')) {
