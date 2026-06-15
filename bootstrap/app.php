@@ -12,6 +12,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
+        // Behind Caddy (TLS terminated at the proxy): honor X-Forwarded-* so
+        // Laravel knows the original request is HTTPS and emits https asset URLs.
+        $middleware->trustProxies(at: '*');
         $middleware->statefulApi();
     })
     ->withExceptions(function (Exceptions $exceptions) {
