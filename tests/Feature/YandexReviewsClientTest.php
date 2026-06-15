@@ -40,6 +40,24 @@ class YandexReviewsClientTest extends TestCase
         $this->assertSame('2026-05-01', $first->reviewedAt->toDateString());
     }
 
+    public function test_fetch_all_pages_walks_until_empty(): void
+    {
+        $fixture = file_get_contents(base_path('tests/Fixtures/yandex_reviews.html'));
+        // page 1 + 2 return the fixture (3 reviews each, distinct ids per page
+        // not needed here — dedupe by id), page 3 is empty → stop.
+        Http::fakeSequence()
+            ->push($fixture)
+            ->push($fixture)
+            ->push('tiny');
+
+        $r = app(YandexReviewsClient::class)->fetchAllPages($this->url());
+
+        $this->assertSame(ParseStatus::Ok, $r->status);
+        $this->assertSame(1234, $r->ratingsCount);
+        // fixture ids are stable, so two pages dedupe to 3 unique reviews
+        $this->assertCount(3, $r->reviews);
+    }
+
     public function test_maps_captcha_response(): void
     {
         Http::fake(['*' => Http::response(file_get_contents(base_path('tests/Fixtures/yandex_captcha.html')))]);

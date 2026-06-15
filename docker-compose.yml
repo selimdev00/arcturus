@@ -25,8 +25,8 @@ services:
     volumes:
       - db:/app/database
       - storage:/app/storage
-    # Headless Chromium runs here; capped so a parse cannot starve the host.
-    mem_limit: 900m
+    # Runs the paginated HTTP parse off the request; light footprint.
+    mem_limit: 256m
     entrypoint: ["sh", "-c"]
     command: ["php artisan queue:work --sleep=3 --tries=2 --timeout=240"]
 

@@ -21,7 +21,58 @@ class YandexReviewsClient
     {
     }
 
+    /** Tier 1 — counters + first page. */
     public function fetchSummary(YandexUrl $org): ParseResult
+    {
+        return $this->fetchPage($org, 1);
+    }
+
+    /**
+     * Tier 2 — all reviews via server-side pagination. The reviews card
+     * paginates with `?page=N` (50 each) over plain HTTP, so the full set
+     * (~600, Yandex's cap) is retrieved without a headless browser, without
+     * the signed `fetchReviews` API, and without datacenter rate-limiting on
+     * that endpoint. Pages are paced; the loop stops at the first empty page
+     * or the configured cap.
+     */
+    public function fetchAllPages(YandexUrl $org): ParseResult
+    {
+        $cap = (int) config('yandex.review_cap', 600);
+        $maxPages = (int) ceil($cap / 50) + 1;
+
+        $first = $this->fetchPage($org, 1);
+        if (! $first->isOk()) {
+            return $first;
+        }
+
+        /** @var array<string, ReviewDto> $byId */
+        $byId = [];
+        foreach ($first->reviews as $dto) {
+            $byId[$dto->reviewId] = $dto;
+        }
+
+        for ($page = 2; $page <= $maxPages && count($byId) < $cap; $page++) {
+            usleep(400_000); // pace requests
+            $result = $this->fetchPage($org, $page);
+            if (! $result->isOk() || $result->reviews === []) {
+                break; // reached the cap / no more pages
+            }
+            foreach ($result->reviews as $dto) {
+                $byId[$dto->reviewId] = $dto;
+            }
+        }
+
+        return new ParseResult(
+            status: ParseStatus::Ok,
+            name: $first->name,
+            averageRating: $first->averageRating,
+            ratingsCount: $first->ratingsCount,
+            reviewsCount: $first->reviewsCount,
+            reviews: array_values($byId),
+        );
+    }
+
+    public function fetchPage(YandexUrl $org, int $page = 1): ParseResult
     {
         $base = config('yandex.base_url', 'https://yandex.com');
 
@@ -33,9 +84,9 @@ class YandexReviewsClient
                     'Accept' => 'text/html,application/xhtml+xml',
                 ])
                 ->timeout(25)
-                ->get($org->reviewsUrl($base));
+                ->get($org->reviewsUrl($base, $page));
         } catch (\Throwable $e) {
-            Log::warning('Yandex tier1 fetch failed', ['id' => $org->businessId, 'error' => $e->getMessage()]);
+            Log::warning('Yandex fetch failed', ['id' => $org->businessId, 'page' => $page, 'error' => $e->getMessage()]);
 
             return ParseResult::failure(ParseStatus::Unreachable);
         }

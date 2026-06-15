@@ -23,7 +23,7 @@ Without Docker (PHP 8.3 + Node 20 + a local Chromium):
 composer install && npm ci && npm run build
 php artisan migrate --seed
 php artisan serve            # terminal 1
-php artisan queue:work       # terminal 2 (runs the full headless parse)
+php artisan queue:work       # terminal 2 (runs the full paginated parse)
 ```
 
 ### Key env vars
@@ -49,19 +49,26 @@ first ~50 reviews. `YandexReviewsClient` fetches this over plain HTTP (works fro
 a datacenter IP) and reads that state. This answers "save + preview" instantly
 and seeds the cache.
 
-### Tier 2 — all ~600 reviews (headless, JSON interception)
-The remaining pages load via `GET /maps/api/business/fetchReviews`, which returns
-clean JSON (`reviewId, author, text, rating, updatedTime, …`) but is **signed
-per page with an `s` parameter computed by Yandex's own JavaScript** — a cold
-backend request returns 400, and the token is single-use, so the endpoint cannot
-be called directly or replayed.
+### Tier 2 — all ~600 reviews (server-side pagination, no browser)
+In the browser the remaining pages load by scroll via
+`GET /maps/api/business/fetchReviews`, which returns clean JSON but is **signed
+per page with an `s` parameter computed by Yandex's own JavaScript** (a cold
+backend request returns 400, the token is single-use) — so that endpoint cannot
+be called directly, and driving it via a headless browser proved flaky and
+rate-limited from a datacenter IP.
 
-So `YandexReviewsScraper` drives a headless Chromium (Spatie Browsershot) to the
-card, lets Yandex's JS sign and fire the requests, and **intercepts the
-`fetchReviews` JSON responses** while scrolling the reviews container to the cap.
-We never parse fragile DOM classes and never reverse the signature — we keep the
-clean payload and let the browser do the signing. This runs as a queued job
-(`ParseOrganizationReviews`); results are upserted by `reviewId`.
+The key finding: **the server-rendered card itself paginates with `?page=N`**
+(50 reviews per page, in the same embedded state as page 1). So Tier 2 just
+walks `?page=1..12` over plain HTTP, extracts each page's 50 reviews, and stops
+at the first empty page — Yandex's ~600 cap. This is reliable, fast, needs no
+browser/Chromium, hits no captcha, and isn't rate-limited the way the signed XHR
+is. Runs as a queued job (`ParseOrganizationReviews`); reviews are upserted by
+`reviewId`.
+
+A headless fallback (`YandexReviewsScraper`, Browsershot — intercepts the signed
+`fetchReviews` JSON while scrolling) is kept in the codebase for the case where
+Yandex drops `?page` support; it needs Chromium + `npm install puppeteer@22` and
+is off by default to keep the image lean.
 
 ### Caching & pagination
 A parse stores the organization (average, both counters, `parsed_at`) and its

@@ -11,15 +11,13 @@ RUN npm run build
 # ---------- app ----------
 FROM dunglas/frankenphp:1-php8.4-bookworm
 
-# PHP extensions + headless Chromium for Browsershot (Tier 2).
+# Tier 2 uses plain HTTP pagination, so no browser is needed at runtime.
+# (The optional headless fallback in YandexReviewsScraper needs Chromium +
+# `npm install puppeteer@22` — not installed by default to keep the image lean.)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        git unzip nodejs npm \
-        chromium fonts-liberation libnss3 libatk-bridge2.0-0 libgtk-3-0 libasound2 \
+        git unzip \
     && install-php-extensions pdo_sqlite intl zip opcache \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
-
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true \
-    BROWSERSHOT_CHROME_PATH=/usr/bin/chromium
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 WORKDIR /app
@@ -27,12 +25,6 @@ WORKDIR /app
 # PHP deps (no dev in image).
 COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
-
-# Puppeteer (Browsershot driver) — uses the system chromium above.
-# Pin to the last CommonJS release; newer puppeteer is ESM-only and breaks
-# Browsershot's require() under the Debian Node runtime.
-COPY package*.json ./
-RUN npm ci --omit=dev && npm install puppeteer@22.15.0
 
 COPY . .
 COPY --from=frontend /app/public/build ./public/build

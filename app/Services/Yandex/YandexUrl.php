@@ -43,13 +43,18 @@ class YandexUrl
         return null;
     }
 
-    /** Server-rendered reviews card URL on yandex.com (.ru blocks datacenter IPs). */
-    public function reviewsUrl(string $base = 'https://yandex.com'): string
+    /**
+     * Server-rendered reviews card URL on yandex.com (.ru blocks datacenter IPs).
+     * The card paginates server-side via `?page=N` (50 reviews per page).
+     */
+    public function reviewsUrl(string $base = 'https://yandex.com', int $page = 1): string
     {
         $path = $this->slug
             ? "/maps/org/{$this->slug}/{$this->businessId}/reviews/"
             : "/maps/org/{$this->businessId}/reviews/";
 
-        return rtrim($base, '/').$path;
+        $url = rtrim($base, '/').$path;
+
+        return $page > 1 ? $url.'?page='.$page : $url;
     }
 }

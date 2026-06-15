@@ -5,7 +5,7 @@ namespace App\Jobs;
 use App\Enums\ParseStatus;
 use App\Models\Organization;
 use App\Services\Yandex\ParseResult;
-use App\Services\Yandex\YandexReviewsScraper;
+use App\Services\Yandex\YandexReviewsClient;
 use App\Services\Yandex\YandexUrl;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -24,7 +24,7 @@ class ParseOrganizationReviews implements ShouldQueue
     {
     }
 
-    public function handle(YandexReviewsScraper $scraper): void
+    public function handle(YandexReviewsClient $client): void
     {
         $org = Organization::find($this->organizationId);
         if (! $org) {
@@ -32,7 +32,7 @@ class ParseOrganizationReviews implements ShouldQueue
         }
 
         $url = new YandexUrl($org->business_id, $this->slugFrom($org->source_url));
-        $result = $scraper->fetchAll($url);
+        $result = $client->fetchAllPages($url);
 
         if (! $result->isOk()) {
             $org->update(['parse_status' => $result->status]);
