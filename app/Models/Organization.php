@@ -14,7 +14,6 @@ class Organization extends Model
     ];
 
     protected $casts = [
-        'average_rating' => 'decimal:2',
         'ratings_count' => 'integer',
         'reviews_count' => 'integer',
         'parse_status' => ParseStatus::class,
