@@ -1,6 +1,10 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed } from 'vue';
+import { RouterLink } from 'vue-router';
 import api from '../lib/api';
+
+const props = defineProps({ id: { type: [String, Number], required: true } });
+const base = `/organizations/${props.id}`;
 
 const org = ref(null);
 const reviews = ref([]);
@@ -24,7 +28,7 @@ function startPoll() {
     stopPoll();
     poll = setInterval(async () => {
         try {
-            const { data } = await api.get('/organization');
+            const { data } = await api.get(base);
             org.value = data.data;
             await loadPage(page.value);
             if (org.value?.parseStatus !== 'pending') stopPoll();
@@ -34,7 +38,7 @@ function startPoll() {
 
 async function loadOrg() {
     try {
-        const { data } = await api.get('/organization');
+        const { data } = await api.get(base);
         org.value = data.data;
         if (org.value?.parseStatus === 'pending') startPoll();
     } catch { org.value = null; }
@@ -44,7 +48,7 @@ async function loadPage(p) {
     error.value = '';
     loading.value = true;
     try {
-        const { data } = await api.get('/organization/reviews', { params: { page: p } });
+        const { data } = await api.get(`${base}/reviews`, { params: { page: p } });
         reviews.value = data.data;
         page.value = data.meta.current_page;
         lastPage.value = data.meta.last_page;
@@ -59,7 +63,7 @@ async function loadPage(p) {
 async function reparse() {
     reparsing.value = true;
     try {
-        await api.post('/organization/reparse');
+        await api.post(`${base}/reparse`);
         await loadOrg();
         startPoll();
     } finally {
@@ -79,6 +83,7 @@ onUnmounted(stopPoll);
 
 <template>
     <div>
+        <RouterLink to="/organizations" class="mb-4 inline-block text-sm text-slate-500 hover:text-slate-900">← все организации</RouterLink>
         <div v-if="org" class="mb-6 flex items-center justify-between rounded-xl border border-slate-200 bg-white p-5">
             <div>
                 <h1 class="font-medium">{{ org.name || 'Организация' }}</h1>

@@ -15,8 +15,8 @@ async function onLogout() {
         <header v-if="auth.user" class="border-b border-slate-200 bg-white">
             <div class="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
                 <nav class="flex gap-4 text-sm font-medium">
-                    <RouterLink to="/" class="text-slate-600 hover:text-slate-900" active-class="text-slate-900">Настройки</RouterLink>
-                    <RouterLink to="/reviews" class="text-slate-600 hover:text-slate-900" active-class="text-slate-900">Отзывы</RouterLink>
+                    <RouterLink to="/" class="text-slate-600 hover:text-slate-900" active-class="text-slate-900">Добавить</RouterLink>
+                    <RouterLink to="/organizations" class="text-slate-600 hover:text-slate-900" active-class="text-slate-900">Организации</RouterLink>
                 </nav>
                 <button class="text-sm text-slate-500 hover:text-slate-900" @click="onLogout">Выйти</button>
             </div>

@@ -59,10 +59,40 @@ class SettingsFlowTest extends TestCase
         }
 
         $this->actingAs($this->user())
-            ->getJson('/api/organization/reviews?page=1')
+            ->getJson("/api/organizations/{$org->id}/reviews?page=1")
             ->assertOk()
             ->assertJsonCount(50, 'data')
             ->assertJsonPath('meta.total', 60)
             ->assertJsonPath('meta.last_page', 2);
+    }
+
+    public function test_lists_all_parsed_organizations(): void
+    {
+        Organization::create(['business_id' => '1', 'source_url' => 'a', 'name' => 'A', 'parse_status' => 'ok']);
+        Organization::create(['business_id' => '2', 'source_url' => 'b', 'name' => 'B', 'parse_status' => 'ok']);
+
+        $this->actingAs($this->user())
+            ->getJson('/api/organizations')
+            ->assertOk()
+            ->assertJsonCount(2, 'data');
+    }
+
+    public function test_fresh_cache_hit_returns_cached_without_reparse(): void
+    {
+        Queue::fake();
+        $org = Organization::create([
+            'business_id' => '99', 'source_url' => 'https://yandex.ru/maps/org/test/99/',
+            'name' => 'Cached', 'ratings_count' => 10, 'reviews_count' => 5,
+            'parse_status' => 'ok', 'parsed_at' => now()->subHour(),
+        ]);
+        $org->reviews()->create(['review_id' => 'r1', 'author' => 'A', 'rating' => 5, 'reviewed_at' => now()]);
+
+        $this->actingAs($this->user())
+            ->postJson('/api/settings/source', ['url' => 'https://yandex.ru/maps/org/test/99/'])
+            ->assertOk()
+            ->assertJsonPath('cached', true)
+            ->assertJsonPath('data.name', 'Cached');
+
+        Queue::assertNotPushed(ParseOrganizationReviews::class);
     }
 }

@@ -19,6 +19,17 @@ class SettingsController extends Controller
     public function store(StoreSourceRequest $request)
     {
         $parsed = YandexUrl::tryParse($request->string('url'));
+        $existing = Organization::where('business_id', $parsed->businessId)->first();
+
+        // Cache hit: this org was fully parsed recently — serve from the DB
+        // instead of re-parsing. The manual "refresh" bypasses this.
+        if ($existing && $this->isFresh($existing)) {
+            $existing->update(['source_url' => $request->string('url')]);
+            $existing->reviews_count_loaded = $existing->reviews()->count();
+
+            return (new OrganizationResource($existing))->additional(['cached' => true]);
+        }
+
         $summary = $this->client->fetchSummary($parsed);
 
         $org = Organization::updateOrCreate(
@@ -35,17 +46,26 @@ class SettingsController extends Controller
             ],
         );
 
-        // Seed the cache with the first page immediately (fast path), so the UI
-        // shows reviews while the full parse runs.
+        // Seed the cache with the first page immediately (fast path).
         if ($summary->isOk() && $summary->reviews !== []) {
             $this->seedReviews($org, $summary->reviews);
         }
 
-        // Always run the full parse in the background — this also self-heals a
+        // Always run the full parse in the background — also self-heals a
         // transient failure of the synchronous first-page fetch.
         ParseOrganizationReviews::dispatch($org->id);
 
         return new OrganizationResource($org->fresh());
+    }
+
+    private function isFresh(Organization $org): bool
+    {
+        $ttl = (int) config('yandex.cache_ttl_hours', 24);
+
+        return $org->parse_status === ParseStatus::Ok
+            && $org->parsed_at !== null
+            && $org->parsed_at->gt(now()->subHours($ttl))
+            && $org->reviews()->exists();
     }
 
     private function seedReviews(Organization $org, array $reviews): void

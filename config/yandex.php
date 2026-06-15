@@ -16,4 +16,9 @@ return [
 
     // Headless scroll budget — generous enough to reach the ~600 cap.
     'max_scrolls' => (int) env('YANDEX_MAX_SCROLLS', 40),
+
+    // Cache freshness: re-pasting an org already parsed within this window
+    // returns the cached result instead of re-parsing. Reviews change slowly,
+    // so a day is a sensible default; the manual "refresh" always re-parses.
+    'cache_ttl_hours' => (int) env('YANDEX_CACHE_TTL_HOURS', 24),
 ];

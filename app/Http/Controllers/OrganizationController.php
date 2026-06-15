@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ParseStatus;
 use App\Http\Resources\OrganizationResource;
 use App\Http\Resources\ReviewResource;
 use App\Jobs\ParseOrganizationReviews;
@@ -9,32 +10,28 @@ use App\Models\Organization;
 
 class OrganizationController extends Controller
 {
-    /** The app tracks a single configured organization. */
-    private function current(): ?Organization
+    /** All parsed organizations, newest first, with stored-review counts. */
+    public function index()
     {
-        return Organization::latest('id')->first();
+        $orgs = Organization::query()
+            ->withCount('reviews as reviews_stored_count')
+            ->latest('id')
+            ->get()
+            ->each(fn (Organization $o) => $o->reviews_count_loaded = $o->reviews_stored_count);
+
+        return OrganizationResource::collection($orgs);
     }
 
-    public function show()
+    public function show(Organization $organization)
     {
-        $org = $this->current();
-        if (! $org) {
-            return response()->json(null, 404);
-        }
+        $organization->reviews_count_loaded = $organization->reviews()->count();
 
-        $org->reviews_count_loaded = $org->reviews()->count();
-
-        return new OrganizationResource($org);
+        return new OrganizationResource($organization);
     }
 
-    public function reviews()
+    public function reviews(Organization $organization)
     {
-        $org = $this->current();
-        if (! $org) {
-            return response()->json(['data' => [], 'meta' => ['current_page' => 1, 'last_page' => 1, 'total' => 0]]);
-        }
-
-        $page = $org->reviews()
+        $page = $organization->reviews()
             ->orderByDesc('reviewed_at')
             ->orderByDesc('id')
             ->paginate(50);
@@ -42,15 +39,10 @@ class OrganizationController extends Controller
         return ReviewResource::collection($page);
     }
 
-    public function reparse()
+    public function reparse(Organization $organization)
     {
-        $org = $this->current();
-        if (! $org) {
-            return response()->json(null, 404);
-        }
-
-        $org->update(['parse_status' => \App\Enums\ParseStatus::Pending, 'parsed_at' => null]);
-        ParseOrganizationReviews::dispatch($org->id);
+        $organization->update(['parse_status' => ParseStatus::Pending, 'parsed_at' => null]);
+        ParseOrganizationReviews::dispatch($organization->id);
 
         return response()->noContent();
     }
