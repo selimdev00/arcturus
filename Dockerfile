@@ -29,8 +29,10 @@ COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --no-autoloader --prefer-dist --no-interaction
 
 # Puppeteer (Browsershot driver) — uses the system chromium above.
+# Pin to the last CommonJS release; newer puppeteer is ESM-only and breaks
+# Browsershot's require() under the Debian Node runtime.
 COPY package*.json ./
-RUN npm ci --omit=dev && npm install puppeteer --no-save || npm install puppeteer
+RUN npm ci --omit=dev && npm install puppeteer@22.15.0
 
 COPY . .
 COPY --from=frontend /app/public/build ./public/build
