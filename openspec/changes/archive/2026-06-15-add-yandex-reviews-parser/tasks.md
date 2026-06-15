@@ -21,8 +21,8 @@
 ## 4. Parsing core (spec: reviews-parsing)
 - [x] 4.1 `YandexReviewsClient` (Tier 1): fetch card HTML, extract state blob →
       counters + average + first 50; map errors to `ParseStatus`
-- [~] 4.2 `YandexReviewsScraper` (Tier 2): Browsershot + fetch-hook JSON capture,
-      scroll-to-cap loop, return all reviews
+- [x] 4.2 Tier 2: full set via server-side `?page=N` pagination (plain HTTP,
+      no browser, no captcha, no rate-limit) — headless Browsershot kept as fallback
 - [x] 4.3 `ParseOrganizationReviews` queued job: run Tier 2, upsert reviews by
       `reviewId`, update org counters + `parsedAt`, persist `ParseStatus`
 - [x] 4.4 Captcha / unreachable / markup-changed / empty handling + logging
@@ -37,13 +37,13 @@
 - [x] 5.4 "Re-parse" affordance + parse-in-progress / partial states
 
 ## 6. Delivery
-- [ ] 6.1 `docker-compose.yml` (FrankenPHP app + Chromium, mem_limit, db worker)
-- [ ] 6.2 README: local run (docker-compose), env vars, parsing approach &
+- [x] 6.1 `docker-compose.yml` (FrankenPHP app + Chromium, mem_limit, db worker)
+- [x] 6.2 README: local run (docker-compose), env vars, parsing approach &
       bot-protection rationale, "given more time" notes
-- [ ] 6.3 Push `selimdev00/arcturus`
-- [ ] 6.4 Deploy isolated to `snapfrom-prod` (`/srv/arcturus`, port 3800),
+- [x] 6.3 Push `selimdev00/arcturus`
+- [x] 6.4 Deploy isolated to `snapfrom-prod` (`/srv/arcturus`, port 3800),
       Caddy vhost, Cloudflare DNS — verify live with an arbitrary org
-- [ ] 6.5 Smoke test on host: page-1 + full parse of a sample org, confirm no
+- [x] 6.5 Smoke test on host: page-1 + full parse of a sample org, confirm no
       captcha / graceful degradation
 
 ## 7. Archive
