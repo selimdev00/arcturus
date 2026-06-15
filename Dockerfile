@@ -9,7 +9,7 @@ COPY resources ./resources
 RUN npm run build
 
 # ---------- app ----------
-FROM dunglas/frankenphp:1-php8.3-bookworm
+FROM dunglas/frankenphp:1-php8.4-bookworm
 
 # PHP extensions + headless Chromium for Browsershot (Tier 2).
 RUN apt-get update && apt-get install -y --no-install-recommends \
