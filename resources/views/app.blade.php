@@ -6,7 +6,7 @@
     <title>Arcturus — отзывы Яндекс.Карт</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="h-full bg-slate-50 text-slate-900 antialiased">
+<body class="h-full antialiased">
     <div id="app" class="h-full"></div>
 </body>
 </html>
