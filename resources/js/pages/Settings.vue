@@ -22,8 +22,8 @@ function startPoll() {
     poll = setInterval(async () => {
         try {
             const { data } = await api.get('/organization');
-            org.value = data;
-            if (data?.parseStatus !== 'pending') stopPoll();
+            org.value = data.data;
+            if (org.value?.parseStatus !== 'pending') stopPoll();
         } catch { stopPoll(); }
     }, 3000);
 }
@@ -31,9 +31,9 @@ function startPoll() {
 async function load() {
     try {
         const { data } = await api.get('/organization');
-        org.value = data;
-        if (data?.url) url.value = data.url;
-        if (data?.parseStatus === 'pending') startPoll();
+        org.value = data.data;
+        if (org.value?.url) url.value = org.value.url;
+        if (org.value?.parseStatus === 'pending') startPoll();
     } catch { /* none configured yet */ }
 }
 
@@ -42,8 +42,8 @@ async function onSubmit() {
     loading.value = true;
     try {
         const { data } = await api.post('/settings/source', { url: url.value });
-        org.value = data;
-        if (data?.parseStatus === 'pending') startPoll();
+        org.value = data.data;
+        if (org.value?.parseStatus === 'pending') startPoll();
     } catch (e) {
         error.value = e?.response?.data?.message
             || (e?.response?.status === 422 ? 'Ссылка не похожа на карточку организации Яндекс.Карт' : 'Не удалось сохранить');

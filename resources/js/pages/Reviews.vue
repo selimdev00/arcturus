@@ -25,9 +25,9 @@ function startPoll() {
     poll = setInterval(async () => {
         try {
             const { data } = await api.get('/organization');
-            org.value = data;
+            org.value = data.data;
             await loadPage(page.value);
-            if (data?.parseStatus !== 'pending') stopPoll();
+            if (org.value?.parseStatus !== 'pending') stopPoll();
         } catch { stopPoll(); }
     }, 3000);
 }
@@ -35,8 +35,8 @@ function startPoll() {
 async function loadOrg() {
     try {
         const { data } = await api.get('/organization');
-        org.value = data;
-        if (data?.parseStatus === 'pending') startPoll();
+        org.value = data.data;
+        if (org.value?.parseStatus === 'pending') startPoll();
     } catch { org.value = null; }
 }
 
