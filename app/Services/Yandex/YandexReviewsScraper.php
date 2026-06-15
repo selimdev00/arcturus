@@ -139,8 +139,16 @@ class YandexReviewsScraper
             return res;
           };
 
-          // 3) scroll the reviews container to the cap
-          const sc = document.querySelector('.scroll__container');
+          // 3) scroll the reviews container to the cap. There are several
+          // .scroll__container nodes on the page — pick the one that actually
+          // wraps the review cards (nearest scrollable ancestor of a card).
+          const card = document.querySelector('.business-review-view');
+          let sc = card ? card.closest('.scroll__container') : null;
+          if (!sc) {
+            sc = [...document.querySelectorAll('.scroll__container')]
+              .find(el => el.querySelector('.business-review-view'))
+              || document.querySelector('.scroll__container');
+          }
           if (sc) {
             let stable = 0, prev = byId.size;
             for (let i = 0; i < {$maxScrolls} && stable < 3; i++) {
