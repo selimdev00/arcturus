@@ -1,0 +1,35 @@
+services:
+  app:
+    build: .
+    image: arcturus
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:3800:80"
+    volumes:
+      - db:/app/database
+      - storage:/app/storage
+    mem_limit: 320m
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:80/up"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  worker:
+    image: arcturus
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      - app
+    volumes:
+      - db:/app/database
+      - storage:/app/storage
+    # Headless Chromium runs here; capped so a parse cannot starve the host.
+    mem_limit: 900m
+    entrypoint: ["sh", "-c"]
+    command: ["php artisan queue:work --sleep=3 --tries=2 --timeout=240"]
+
+volumes:
+  db:
+  storage:

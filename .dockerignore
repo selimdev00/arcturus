@@ -1,0 +1,13 @@
+.git
+.github
+.claude
+CLAUDE.md
+openspec
+node_modules
+vendor
+public/build
+storage/logs/*.log
+database/database.sqlite
+.env
+tests/Fixtures/*.html.bak
+.DS_Store
