@@ -29,19 +29,21 @@ class SettingsController extends Controller
                 'average_rating' => $summary->averageRating,
                 'ratings_count' => $summary->ratingsCount,
                 'reviews_count' => $summary->reviewsCount,
-                'parse_status' => $summary->status,
+                // Mark a full parse as in progress; the job sets the final status.
+                'parse_status' => ParseStatus::Pending,
+                'parsed_at' => null,
             ],
         );
 
-        // Seed the cache with the first page immediately (fast path).
+        // Seed the cache with the first page immediately (fast path), so the UI
+        // shows reviews while the full parse runs.
         if ($summary->isOk() && $summary->reviews !== []) {
             $this->seedReviews($org, $summary->reviews);
         }
 
-        // Kick the full headless parse in the background.
-        if (in_array($summary->status, [ParseStatus::Ok, ParseStatus::Pending], true)) {
-            ParseOrganizationReviews::dispatch($org->id);
-        }
+        // Always run the full parse in the background — this also self-heals a
+        // transient failure of the synchronous first-page fetch.
+        ParseOrganizationReviews::dispatch($org->id);
 
         return new OrganizationResource($org->fresh());
     }

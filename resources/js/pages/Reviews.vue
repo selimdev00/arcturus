@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import api from '../lib/api';
 
 const org = ref(null);
@@ -10,11 +10,33 @@ const total = ref(0);
 const loading = ref(false);
 const error = ref('');
 const reparsing = ref(false);
+let poll = null;
+
+const parsing = computed(() => org.value?.parseStatus === 'pending');
+
+function stopPoll() {
+    if (poll) { clearInterval(poll); poll = null; }
+}
+
+// While the background parse runs, refresh the header and reload page 1 as
+// reviews land.
+function startPoll() {
+    stopPoll();
+    poll = setInterval(async () => {
+        try {
+            const { data } = await api.get('/organization');
+            org.value = data;
+            await loadPage(page.value);
+            if (data?.parseStatus !== 'pending') stopPoll();
+        } catch { stopPoll(); }
+    }, 3000);
+}
 
 async function loadOrg() {
     try {
         const { data } = await api.get('/organization');
         org.value = data;
+        if (data?.parseStatus === 'pending') startPoll();
     } catch { org.value = null; }
 }
 
@@ -39,6 +61,7 @@ async function reparse() {
     try {
         await api.post('/organization/reparse');
         await loadOrg();
+        startPoll();
     } finally {
         reparsing.value = false;
     }
@@ -51,6 +74,7 @@ function fmtDate(iso) {
 }
 
 onMounted(async () => { await loadOrg(); await loadPage(1); });
+onUnmounted(stopPoll);
 </script>
 
 <template>
@@ -72,7 +96,10 @@ onMounted(async () => { await loadOrg(); await loadPage(1); });
             </div>
         </div>
 
-        <p v-if="org && org.parseStatus && org.parseStatus !== 'ok'" class="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700">
+        <p v-if="parsing" class="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-700">
+            Идёт загрузка отзывов… список обновляется автоматически.
+        </p>
+        <p v-else-if="org && org.parseStatus && org.parseStatus !== 'ok'" class="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
             {{ org.parseStatusLabel || org.parseStatus }}
         </p>
 

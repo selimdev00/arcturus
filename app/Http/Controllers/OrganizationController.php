@@ -49,6 +49,7 @@ class OrganizationController extends Controller
             return response()->json(null, 404);
         }
 
+        $org->update(['parse_status' => \App\Enums\ParseStatus::Pending, 'parsed_at' => null]);
         ParseOrganizationReviews::dispatch($org->id);
 
         return response()->noContent();

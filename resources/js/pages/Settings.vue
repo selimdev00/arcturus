@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRouter } from 'vue-router';
 import api from '../lib/api';
 
@@ -8,12 +8,32 @@ const url = ref('');
 const loading = ref(false);
 const error = ref('');
 const org = ref(null);
+let poll = null;
+
+const parsing = computed(() => org.value?.parseStatus === 'pending');
+
+function stopPoll() {
+    if (poll) { clearInterval(poll); poll = null; }
+}
+
+// Refresh the summary while the background full parse is running.
+function startPoll() {
+    stopPoll();
+    poll = setInterval(async () => {
+        try {
+            const { data } = await api.get('/organization');
+            org.value = data;
+            if (data?.parseStatus !== 'pending') stopPoll();
+        } catch { stopPoll(); }
+    }, 3000);
+}
 
 async function load() {
     try {
         const { data } = await api.get('/organization');
         org.value = data;
         if (data?.url) url.value = data.url;
+        if (data?.parseStatus === 'pending') startPoll();
     } catch { /* none configured yet */ }
 }
 
@@ -23,6 +43,7 @@ async function onSubmit() {
     try {
         const { data } = await api.post('/settings/source', { url: url.value });
         org.value = data;
+        if (data?.parseStatus === 'pending') startPoll();
     } catch (e) {
         error.value = e?.response?.data?.message
             || (e?.response?.status === 422 ? 'Ссылка не похожа на карточку организации Яндекс.Карт' : 'Не удалось сохранить');
@@ -30,7 +51,9 @@ async function onSubmit() {
         loading.value = false;
     }
 }
+
 onMounted(load);
+onUnmounted(stopPoll);
 </script>
 
 <template>
@@ -59,7 +82,8 @@ onMounted(load);
                 <span>в базе: {{ org.reviewsStored ?? 0 }}</span>
             </div>
             <p class="mt-3 text-sm" :class="org.parseStatus === 'ok' ? 'text-emerald-600' : 'text-amber-600'">
-                Статус парсинга: {{ org.parseStatusLabel || org.parseStatus }}
+                <span v-if="parsing">Идёт загрузка отзывов… <span class="text-slate-400">(обновляется автоматически)</span></span>
+                <span v-else>Статус парсинга: {{ org.parseStatusLabel || org.parseStatus }}</span>
             </p>
             <button class="mt-4 text-sm font-medium text-slate-900 underline" @click="router.push({ name: 'reviews' })">
                 Перейти к отзывам →
