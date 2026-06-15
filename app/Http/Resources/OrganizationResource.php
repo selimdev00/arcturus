@@ -18,7 +18,7 @@ class OrganizationResource extends JsonResource
             'url' => $this->source_url,
             'businessId' => $this->business_id,
             'name' => $this->name,
-            'averageRating' => $this->average_rating !== null ? (float) $this->average_rating : null,
+            'averageRating' => $this->average_rating !== null ? round((float) $this->average_rating, 1) : null,
             'ratingsCount' => $this->ratings_count,
             'reviewsCount' => $this->reviews_count,
             'reviewsStored' => $this->reviews_count_loaded ?? $this->reviews()->count(),
